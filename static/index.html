@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MOBIDock — multi-engine molecular docking with RDKit property warnings and synthesizability analysis.">
+  <title>MOBIDock — Molecular Docking</title>
+  <link rel="stylesheet" href="/static/style.css">
+
+  <!-- 3Dmol.js for 3D molecular visualization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.1.0/3Dmol-min.js" defer></script>
+
+  <!-- JSME Molecule Editor -->
+  <script src="https://jsme-editor.github.io/dist/jsme/jsme.nocache.js"></script>
+<style id="gd-style">
+.gd-sec{background:var(--bg-1);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:13px;color:var(--text-2)}
+.gd-h{font-weight:700;color:var(--text-1,#fff);margin-bottom:6px;font-size:14px}
+.gd-h span{font-weight:400;color:var(--text-3);font-size:12px;margin-left:6px}
+.gd-chips{display:flex;flex-wrap:wrap;gap:6px}
+.gd-chip{border:1px solid var(--border);border-radius:999px;padding:2px 9px;font-size:12px}
+.gd-res{border:1px solid;border-radius:6px;padding:1px 7px;font-size:12px;font-family:monospace}
+.gd-list{margin:6px 0 6px 18px;padding:0}.gd-list li{margin:3px 0}
+.gd-pred{margin-top:10px;padding:10px;border:1px dashed var(--border);border-radius:8px}
+.gd-verdict{padding:8px 10px;border-radius:8px;background:rgba(255,214,10,.08);border:1px solid rgba(255,214,10,.35);margin-bottom:8px}
+.gd-table{width:100%;border-collapse:collapse;font-size:12.5px}.gd-table td{padding:4px 8px;border-top:1px solid rgba(255,255,255,.07)}
+</style>
+<style>
+.sim-pair-structures{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:10px 0}
+.sim-pair-structures figure{margin:0;padding:8px;border:1px solid var(--border);border-radius:8px;background:transparent}
+.sim-pair-structures figcaption{font-size:11px;color:var(--text-2);margin-bottom:4px}
+.sim-pair-structures svg{display:block;width:100%;height:auto;max-height:220px;background:transparent}
+.sim-feature-summary{margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.02)}
+.sim-feature-summary-title{margin-bottom:8px;color:var(--text-1);font-size:12px;font-weight:700}
+.sim-feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.sim-feature-grid>section{min-width:0;padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--bg-1)}
+.sim-feature-grid h4{margin:0 0 6px;color:var(--text-2);font-size:10px;font-weight:700}
+.sim-feature-list{display:flex;flex-wrap:wrap;gap:5px;margin:0;padding:0;list-style:none}
+.sim-feature-list li{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid var(--border);border-radius:999px;color:var(--text-2);font-size:10px}
+.sim-feature-list.shared li{border-color:rgba(42,245,152,.35);color:#77eab0;background:rgba(42,245,152,.06)}
+.sim-feature-list.different li{border-color:rgba(247,37,133,.32);color:#ff8db8;background:rgba(247,37,133,.05)}
+.sim-feature-list small{color:var(--text-3);font-size:9px}
+.sim-feature-empty{margin:0;color:var(--text-3);font-size:10px}
+.sim-comparison-header,.sim-comparison-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sim-comparison-actions{margin-left:auto}
+.sim-comparison-bar{height:6px;border-radius:4px;background:rgba(255,255,255,.08);margin:8px 0;overflow:hidden}
+.sim-comparison-bar>div{height:100%;background:var(--accent-2)}
+.selected-pdb-details{margin:12px 0;padding:14px 16px;border:1px solid var(--border);border-radius:var(--r-md);background:linear-gradient(135deg,rgba(108,99,255,.07),rgba(76,201,240,.035)),var(--bg-1)}
+.pdb-details-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.pdb-details-heading .card-title{margin:0;color:var(--text-1);font-size:14px}
+.pdb-details-kicker{margin-bottom:4px;color:var(--accent-2);font-size:9px;font-weight:700;letter-spacing:1.2px}
+.pdb-details-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.pdb-detail-item{min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:rgba(255,255,255,.025);color:var(--text-2);font-size:11px;overflow-wrap:anywhere}
+.pdb-detail-label{display:block;margin-bottom:3px;color:var(--text-3);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.sa3d-dialog{width:min(1080px,calc(100vw - 32px));max-height:92vh;overflow:auto;margin:auto;padding:0;border:1px solid var(--border-h);border-radius:var(--r-lg);background:var(--bg-1);color:var(--text-2);box-shadow:var(--shadow-card),0 0 48px rgba(108,99,255,.18);font-family:inherit}
+.sa3d-dialog::backdrop{background:rgba(2,4,8,.78);backdrop-filter:blur(5px)}
+.sa3d-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border-bottom:1px solid var(--border);background:linear-gradient(110deg,rgba(108,99,255,.10),rgba(76,201,240,.04))}
+.sa3d-kicker{display:block;margin-bottom:3px;color:var(--accent-2);font-size:10px;font-weight:700;letter-spacing:1.2px}
+.sa3d-header h2{color:var(--text-1);font-size:18px;font-weight:700;line-height:1.35}
+.sa3d-dialog .sa-body{padding:20px 24px 26px;color:var(--text-2);font-size:13px;line-height:1.55}
+.sa3d-dialog .sa-body p{margin:0 0 10px;color:var(--text-2)}
+.sa3d-dialog .sa-body h3{margin:22px 0 8px;color:var(--text-1);font-size:15px}
+.sa3d-dialog label{display:block;margin:0 0 12px;color:var(--text-2);font-size:12px;font-weight:600}
+.sa3d-dialog select{display:block;width:100%;min-height:38px;margin-top:5px;padding:7px 10px;border:1px solid var(--border-h);border-radius:var(--r-sm);background:var(--bg-2);color:var(--text-1);font:inherit}
+.sa3d-dialog select option{background:var(--bg-2);color:var(--text-1)}
+.sa3d-dialog button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--glass-b);color:var(--text-2);font:600 12px 'Inter',sans-serif;cursor:pointer;transition:all .16s ease}
+.sa3d-dialog button:hover{border-color:rgba(76,201,240,.55);background:var(--bg-3);color:var(--text-1)}
+.sa3d-dialog button:focus-visible,.sa3d-dialog select:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.sa3d-dialog [data-sa-view]{border:1px solid var(--border);box-shadow:inset 0 0 24px rgba(76,201,240,.035)}
+.sa3d-dialog [data-sa-selection]{min-height:40px;margin:10px 0;padding:9px 12px;border-left:3px solid var(--accent-2);border-radius:var(--r-sm);background:var(--bg-2);color:var(--text-1);overflow-wrap:anywhere}
+.sa3d-dialog .gd-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+.sa3d-dialog .gd-table th{position:sticky;top:0;z-index:1;padding:10px 8px;background:var(--bg-2);color:var(--text-1);text-align:left;border-bottom:1px solid var(--border-h)}
+.sa3d-dialog .gd-table td{padding:8px;border-bottom:1px solid var(--border);color:var(--text-2);vertical-align:middle}
+.sa3d-dialog .gd-table tr:hover td{background:rgba(255,255,255,.025)}
+.sa3d-dialog .gd-table button{width:100%;min-height:42px;justify-content:flex-start;padding:8px 10px;text-align:left;white-space:normal;line-height:1.4;background:var(--bg-2);font-size:11px}
+.sa3d-dialog .gd-table button small{color:var(--accent-2)}
+@media(max-width:680px){.sa3d-dialog{width:calc(100vw - 16px);max-height:94vh;border-radius:12px}.sa3d-header{padding:14px 16px}.sa3d-dialog .sa-body{padding:16px}.sa3d-dialog .gd-table{min-width:620px}}
+</style>
+</head>
+<body>
+
+<!-- Animated particle background -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-step">Running AutoDock Vina…</div>
+  <div class="loading-sub">The current engine finishes before pausing. Hide progress to view saved runs and downloads.</div>
+  <div id="docking-loading-controls" hidden style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <button id="pause-docking" class="btn btn-sm" type="button" onclick="pauseDockingAfterCurrent()">Pause after this engine</button>
+    <button id="stop-docking" class="btn btn-sm" type="button" onclick="stopDockingAfterCurrent()">Stop after this engine</button>
+    <button class="btn btn-sm" type="button" onclick="hideDockingProgress()">Hide progress</button>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div id="toast-container"></div>
+
+<div class="app-root">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">⚗️</div>
+      <div class="logo-text">
+        <h1>MOBIDock</h1>
+        <p>Multi-Engine Molecular Docking</p>
+      </div>
+    </div>
+    <div class="header-status" style="display:flex; align-items:center; gap:16px;">
+      <div style="display:flex; align-items:center;">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Connecting…</span>
+      </div>
+      <div class="notification-center" id="notif-center" style="position:relative; cursor:pointer;">
+        <span class="tab-icon" style="font-size:1.4rem;">🔔</span>
+        <span id="notif-badge" style="display:none; position:absolute; top:-5px; right:-8px; background:var(--red); color:white; border-radius:50%; font-size:10px; width:16px; height:16px; text-align:center; line-height:16px; font-weight:bold;">0</span>
+        <div id="notif-dropdown" style="display:none; position:absolute; top:35px; right:0; width:320px; max-height:400px; overflow-y:auto; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px; box-shadow:0 8px 24px rgba(0,0,0,0.6); z-index:1000; font-family:var(--font-sans);">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:12px;">
+            <h4 style="margin:0; font-size:1rem; color:var(--text-1);">Notifications</h4>
+            <button id="notif-clear-btn" style="background:none; border:none; color:var(--text-3); cursor:pointer; font-size:0.8rem;">Clear All</button>
+          </div>
+          <div id="notif-list" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="text-align:center; color:var(--text-3); font-size:0.9rem; padding:10px;">No notifications yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Tab Navigation ─────────────────────────────────────────────────── -->
+  <nav class="tab-nav" id="tab-nav">
+    <button class="tab-btn active" data-tab="dock" id="tab-dock">
+      <span class="tab-icon">⚡</span> Dock
+    </button>
+    <button class="tab-btn" data-tab="protein-browser" id="tab-protein-browser">
+      <span class="tab-icon">🧬</span> Protein Browser
+    </button>
+    <button class="tab-btn" data-tab="ligand-browser" id="tab-ligand-browser">
+      <span class="tab-icon">💊</span> Ligand Browser
+    </button>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- RDKIT_FEATURES_NAV_START -->
+<button class="tab-btn" data-tab="ligand-features" id="tab-ligand-features">
+  <span class="tab-icon">📊</span> RDKit Features
+</button>
+<!-- RDKIT_FEATURES_NAV_END -->
+    <button class="tab-btn" data-tab="leaderboard" id="tab-leaderboard">
+      <span class="tab-icon">🏆</span> Leaderboard
+    </button>
+    <div class="tab-indicator" id="tab-indicator"></div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: DOCK (main workspace)                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="panel-dock">
+    <div class="main-grid">
+
+      <!-- ── LEFT: Molecule Editor ──────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Molecule Designer</div>
+
+        <!-- JSME 2D editor -->
+        <div class="jsme-wrap">
+          <div id="jsme-container"></div>
+        </div>
+
+        <div class="flex items-center gap-2 mt-2">
+           <label for="ligand-upload" class="btn btn-sm" style="cursor:pointer; background:var(--bg-2)">
+             ⬆ Upload Ligand (.mol/.sdf)
+           </label>
+           <input type="file" id="ligand-upload" accept=".mol,.sdf,.smi" style="display:none" onchange="handleLigandUpload(event)">
+        </div>
+
+        <!-- SMILES text input -->
+        <div class="smiles-row">
+          <input
+            id="smiles-input"
+            class="smiles-input"
+            type="text"
+            placeholder="SMILES — e.g. CC(=O)Oc1ccccc1C(=O)O"
+            value="CC(=O)Oc1ccccc1C(=O)O"
+            aria-label="SMILES string input"
+          >
+        </div>
+
+        <div id="synth-live" class="text-xs" style="margin:6px 0 10px;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:10px"></div>
+
+        <!-- Quick-fill molecules -->
+        <div id="quick-fills" class="quick-fills"></div>
+
+        <!-- PubChem Quick Search (legacy inline) -->
+        <div class="flex gap-2 mt-3 items-center">
+          <input
+            id="pubchem-search-input"
+            class="smiles-input"
+            style="flex:1"
+            type="text"
+            placeholder="Search PubChem (e.g. Paracetamol)"
+            aria-label="PubChem chemical search"
+          >
+          <button id="pubchem-search-btn" class="btn btn-sm" onclick="searchPubChem()" aria-label="Search PubChem">
+            🔍 Search
+          </button>
+        </div>
+
+        <!-- Engine Selector -->
+        <div class="engine-selector mt-3" id="engine-selector">
+          <div class="card-title" style="margin-bottom:8px"><span class="dot" style="background:var(--accent-4)"></span>Docking Engine</div>
+          <div id="engine-options" class="engine-options">
+            <!-- populated via JS -->
+          </div>
+        </div>
+
+        <!-- One Dock Now button supports a single engine or all four engines. -->
+        <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
+          <input
+            id="player-input"
+            class="smiles-input"
+            style="max-width:180px"
+            type="text"
+            placeholder="Your name"
+            aria-label="Player name"
+          >
+          <div class="flex items-center gap-2" title="Synthesizability gate (SA score) applied before docking">
+            <span class="text-xs">Synth.</span>
+            <select id="synth-mode-input" class="smiles-input" style="width:132px" aria-label="Synthesizability filter mode">
+              <option value="standard" selected>Standard (SA ≤ 6.5)</option>
+              <option value="strict">Strict (SA ≤ 5)</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2" title="Rule-of-Five gate applied before docking">
+            <span class="text-xs">Lipinski</span>
+            <select id="lipinski-mode-input" class="smiles-input" style="width:122px" aria-label="Lipinski filter mode">
+              <option value="standard" selected>Standard (≤ 1 miss)</option>
+              <option value="strict">Strict (0 misses)</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs">Exhaust.</span>
+            <input
+              id="exhaustiveness-input"
+              class="smiles-input"
+              style="width:55px;text-align:center"
+              type="number"
+              min="1" max="32" value="8"
+              aria-label="Vina exhaustiveness"
+            >
+          </div>
+          <label class="text-xs" style="display:flex;align-items:center;gap:6px">Ligand
+            <select id="docking-ligand-source" class="smiles-input" style="width:160px" aria-label="Choose designer ligand or native PDB ligand">
+              <option value="chosen">Designer ligand</option>
+              <option value="native" disabled>Native PDB ligand</option>
+            </select>
+          </label>
+          <label class="text-xs" style="display:flex;align-items:center;gap:6px">Poses
+            <input id="docking-pose-count" class="smiles-input" type="number" min="1" max="20" value="10" style="width:60px;text-align:center" aria-label="Number of poses per engine">
+          </label>
+          <button id="dock-btn" class="btn btn-primary" style="margin-left:auto" aria-label="Run docking">
+            <span>⚡</span> Dock Now
+          </button>
+        </div>
+      </div>
+
+      <!-- ── RIGHT: Target Selector + 3D Viewer ───────────────────────────── -->
+      <div class="card">
+        <div class="flex items-center justify-between" style="margin-bottom:12px">
+          <div class="card-title" style="margin-bottom:0"><span class="dot" style="background:var(--accent-2)"></span>Loaded PDB structure</div>
+          <div class="flex gap-2 items-center" style="flex-wrap:wrap;justify-content:flex-end">
+             <input type="text" id="pdb-import-input" class="smiles-input" style="width:70px; padding:4px; font-size:11px" placeholder="PDB ID" maxlength="4">
+             <button class="btn btn-sm" style="font-size:11px" onclick="importPdb()">⬇ Import</button>
+
+             <label for="receptor-upload" class="btn btn-sm btn-primary" style="cursor:pointer; font-size:11px">
+               ⬆ Upload PDB
+             </label>
+             <input type="file" id="receptor-upload" accept=".pdb" style="display:none" onchange="handleReceptorUpload(event)">
+          </div>
+        </div>
+        <div id="target-grid" class="loaded-pdb-details" aria-live="polite">
+          <div class="loaded-pdb-empty">Import a PDB ID or upload a structure to view its details here.</div>
+        </div>
+        <section id="pdb-docking-actions" class="pdb-docking-actions" hidden>
+          <div id="native-ligand-choice" class="native-ligand-choice" hidden>
+            <label class="text-xs" for="native-ligand-select">PDB co-crystal ligand</label>
+            <select id="native-ligand-select" class="smiles-input"></select>
+          </div>
+          <div class="text-xs" id="native-ligand-note" style="color:var(--text-3);margin-top:8px"></div>
+        </section>
+
+        <!-- Bounding Box Controls -->
+        <div id="box-controls" class="mt-4" style="background:var(--bg-1); padding:12px; border-radius:8px; border:1px solid var(--border)">
+           <div class="flex justify-between items-center mb-2">
+             <div class="text-xs" style="color:var(--text-2); font-weight:bold">Grid Box (Search Space)</div>
+             <div class="text-xs" style="color:var(--accent-2)">🎯 Click protein surface to set center</div>
+           </div>
+           <div class="flex gap-2" style="flex-wrap:wrap">
+              <div>
+                <span class="text-xs" style="color:var(--text-3)">Center X</span>
+                <input type="number" id="box-cx" class="smiles-input" style="width:60px; padding:4px" step="0.1" oninput="updateBoxDebounced()">
+              </div>
+              <div>
+                <span class="text-xs" style="color:var(--text-3)">Center Y</span>
+                <input type="number" id="box-cy" class="smiles-input" style="width:60px; padding:4px" step="0.1" oninput="updateBoxDebounced()">
+              </div>
+              <div>
+                <span class="text-xs" style="color:var(--text-3)">Center Z</span>
+                <input type="number" id="box-cz" class="smiles-input" style="width:60px; padding:4px" step="0.1" oninput="updateBoxDebounced()">
+              </div>
+           </div>
+           <div class="flex gap-2 mt-2" style="flex-wrap:wrap; align-items:flex-end;">
+              <div>
+                <span class="text-xs" style="color:var(--text-3)">Size X (Å)</span>
+                <input type="number" id="box-sx" class="smiles-input" style="width:60px; padding:4px" step="0.5" min="4" max="60" oninput="updateBoxDebounced()">
+              </div>
+              <div>
+                <span class="text-xs" style="color:var(--text-3)">Size Y (Å)</span>
+                <input type="number" id="box-sy" class="smiles-input" style="width:60px; padding:4px" step="0.5" min="4" max="60" oninput="updateBoxDebounced()">
+              </div>
+              <div>
+                <span class="text-xs" style="color:var(--text-3)">Size Z (Å)</span>
+                <input type="number" id="box-sz" class="smiles-input" style="width:60px; padding:4px" step="0.5" min="4" max="60" oninput="updateBoxDebounced()">
+              </div>
+              <button class="btn btn-sm" style="font-size:11px" onclick="setCubicBox()" title="Make all three edges equal to X">▢ Cube</button>
+           </div>
+           <div class="mt-3 text-right">
+              <button class="btn btn-sm btn-primary" onclick="previewGridBox()">🔍 Preview Grid Box</button>
+           </div>
+        </div>
+
+        <!-- 3D Molecular Viewer (now embedded in target panel) -->
+        <div class="mt-4">
+          <div class="flex items-center justify-between" style="margin-bottom:10px; flex-wrap:wrap; gap:6px">
+            <div class="card-title" style="margin-bottom:0">
+              <span class="dot" style="background:var(--accent-2)"></span>3D Docked Complex
+            </div>
+            <div style="display:flex;gap:6px; flex-wrap:wrap">
+              <div class="btn-group" style="display:flex; background:var(--bg-1); border-radius:var(--r-sm); border:1px solid var(--border); overflow:hidden">
+                <button class="btn btn-sm" style="border:none; border-radius:0" onclick="toggleVis('cartoon')" aria-label="Toggle Cartoon">Cartoon</button>
+                <button class="btn btn-sm" style="border:none; border-radius:0; border-left:1px solid var(--border)" onclick="toggleVis('surface')" aria-label="Toggle Surface">Surface</button>
+                <button class="btn btn-sm" style="border:none; border-radius:0; border-left:1px solid var(--border)" onclick="toggleVis('sticks')" aria-label="Toggle Sticks">Ligand</button>
+              </div>
+              <button class="btn btn-sm" id="btn-spin" onclick="toggleSpin()" aria-label="Toggle spin animation">🔄 Spin</button>
+              <button class="btn btn-sm" onclick="resetView()" aria-label="Reset camera view">🎯 Reset</button>
+            </div>
+          </div>
+          <div id="viewer-container" style="position:relative">
+            <div class="viewer-placeholder">
+              <div class="big-icon">🔬</div>
+              <div>Select or import a PDB to view its protein structure</div>
+              <div style="font-size:11px;color:var(--text-3)">No protein loads until you select a PDB</div>
+            </div>
+            <!-- Coordinate overlay -->
+            <div id="coord-overlay" class="coord-overlay" style="display:none">
+              X: <span id="coord-x">0.0</span>
+              Y: <span id="coord-y">0.0</span>
+              Z: <span id="coord-z">0.0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="drug-warning-card" style="grid-column:1/-1">
+        <div class="card-title"><span class="dot" style="background:#ffd60a"></span>Drug-property warnings</div>
+        <p class="text-xs" style="margin:6px 0 0;color:var(--text-2)">RDKit descriptor thresholds are checked for the intended site of action. These are screening warnings, not an aggregate drug warnings.</p>
+        <div id="drug-warning-output"><div class="text-xs" style="color:var(--text-3);padding:10px">Draw or load a ligand to begin.</div></div>
+      </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+
+      <div id="score-panel" class="card score-panel">
+        <div class="flex items-center justify-between" style="margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div class="card-title" style="margin-bottom:0"><span class="dot" style="background:var(--green)"></span>Docking Results</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div id="engine-badge" class="engine-badge">⚗️ Vina</div>
+            <div id="mock-badge" class="mock-badge" style="display:none">
+              🎭 MOCK result — Vina is not installed, these numbers are simulated
+            </div>
+          </div>
+        </div>
+
+        <div id="engine-meta" class="text-xs" style="color:var(--text-2); margin-bottom:12px; display:none"></div>
+
+        <div class="score-row">
+          <div class="score-cell" style="--sc-color:var(--accent-2)">
+            <div class="sc-label">Binding Energy</div>
+            <div class="sc-value" style="color:var(--accent-2)" id="score-energy">—</div>
+            <div class="sc-unit">kcal/mol</div>
+          </div>
+          <div class="score-cell" style="--sc-color:#ffd60a">
+            <div class="sc-label">Synthesizability</div>
+            <div class="sc-value" style="color:#ffd60a" id="score-synth">—</div>
+            <div class="sc-unit" id="score-synth-unit">0 – 100</div>
+          </div>
+        </div>
+
+        <!-- Drug-likeness properties -->
+        <div id="synth-card"></div>
+      </div>
+
+    </div><!-- /main-grid -->
+
+    <section id="comparison-results" class="card comparison-results" hidden aria-live="polite">
+      <div class="comparison-heading">
+        <div>
+          <div class="card-title" style="margin:0"><span class="dot" style="background:var(--accent-2)"></span>Docking run list</div>
+          <div id="comparison-note" class="text-xs" style="color:var(--text-2);margin-top:7px"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button id="resume-docking" class="btn btn-sm" type="button" onclick="resumeDocking()" hidden>Resume remaining engines</button>
+          <button id="download-docking-table" class="btn btn-sm" type="button" onclick="downloadDockingTable()" disabled>Download Excel (.xlsx)</button>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="comparison-table">
+          <thead><tr><th>Engine / run</th><th>Status</th><th>Best binding energy / score</th><th>RMSD to best-energy pose</th><th>Poses</th><th>Saved results</th><th>Pose details</th></tr></thead>
+          <tbody id="comparison-table-body"></tbody>
+        </table>
+      </div>
+      <div class="text-xs" style="color:var(--text-3);margin-top:10px">Each engine run appears once. Expand its row to switch between poses and see comparable binding energy, the native engine score and its components, execution device, and RMSD. Native score units can differ between engines. The lowest binding-energy pose for the same ligand and target is the RMSD reference (0.00 Å); the Excel workbook includes every pose and its details.</div>
+    </section>
+
+    <!-- Literature Comparison -->
+    <div class="card" id="literature-card" style="margin-top:16px">
+      <div class="flex items-center justify-between" style="margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">
+          <span class="dot" style="background:var(--accent-4)"></span>Literature Comparison
+        </div>
+      </div>
+      <div class="text-xs mb-3" style="color:var(--text-2)">
+        Experimental affinities from published literature for <strong id="lit-target-name"></strong> inhibitors.
+      </div>
+      <div id="literature-content"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: PROTEIN BROWSER                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-protein-browser">
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:#4cc9f0"></span>RCSB Protein Data Bank Browser</div>
+      <p class="text-xs" style="margin-bottom:16px;color:var(--text-2)">
+        Search 200,000+ protein structures from the Protein Data Bank. Click any result to import it as a docking target.
+      </p>
+
+      <div class="flex gap-2 items-center">
+        <input
+          id="pdb-search-input"
+          class="smiles-input"
+          style="flex:1"
+          type="text"
+          placeholder="Search proteins… e.g. 'kinase', 'insulin receptor'"
+          aria-label="PDB protein search"
+        >
+        <button id="pdb-search-btn" class="btn btn-primary" onclick="searchPDB()">
+          🔍 Search PDB
+        </button>
+      </div>
+
+      <div id="pdb-results" class="browser-results mt-4">
+        <div class="browser-placeholder">
+          <div style="font-size:48px;opacity:0.3">🧬</div>
+          <div style="color:var(--text-3)">Search for a protein to get started</div>
+        </div>
+      </div>
+
+      <div id="pdb-pagination" class="pagination mt-3" style="display:none">
+        <button class="btn btn-sm" id="pdb-prev-btn" onclick="pdbChangePage(-1)">← Prev</button>
+        <span id="pdb-page-info" class="text-xs" style="color:var(--text-2)">Page 1</span>
+        <button class="btn btn-sm" id="pdb-next-btn" onclick="pdbChangePage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: LIGAND BROWSER                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-ligand-browser">
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:#f72585"></span>Ligand Browser</div>
+      <p class="text-xs" style="margin-bottom:16px;color:var(--text-2)">
+        Search compound names in one or both selected datasets. ChEMBL focuses on curated bioactive molecules and their activity data; PubChem is a broad chemical-information database.
+      </p>
+
+
+      <div id="ligand-source-picker" class="gd-sec" style="margin-bottom:14px">
+        <b>Search sources</b>
+        <div class="flex gap-2 items-center" style="flex-wrap:wrap;margin-top:8px">
+          <label class="text-xs" style="display:flex;align-items:flex-start;gap:8px;min-width:260px">
+            <input id="ligand-source-pubchem" type="checkbox" checked>
+            <span><b>PubChem</b><br><span style="color:var(--text-3)">Broad chemical information: structures, properties, safety, biological activity, and more.</span></span>
+          </label>
+          <label class="text-xs" style="display:flex;align-items:flex-start;gap:8px;min-width:260px">
+            <input id="ligand-source-chembl" type="checkbox">
+            <span><b>ChEMBL</b><br><span style="color:var(--text-3)">Curated bioactive molecules, with drug-discovery and target/assay activity data.</span></span>
+          </label>
+        </div>
+      </div>
+      <div class="flex gap-2 items-center">
+        <input
+          id="ligand-search-input"
+          class="smiles-input"
+          style="flex:1"
+          type="text"
+          placeholder="Search compounds… e.g. 'Ibuprofen', 'Selegiline', 'Donepezil'"
+          aria-label="Search selected chemical datasets"
+        >
+        <button id="ligand-search-btn" class="btn btn-primary" onclick="searchLigands()">
+          🔍 Search selected datasets
+        </button>
+      </div>
+
+      <div id="ligand-results" class="browser-results mt-4">
+        <div class="browser-placeholder">
+          <div style="font-size:48px;opacity:0.3">💊</div>
+          <div style="color:var(--text-3)">Choose one or both sources, then search for a compound</div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="card" id="chembl-ligand-browser-card" style="margin-top:16px">
+      <div class="card-title"><span class="dot" style="background:#4cc9f0"></span>Find Similar Drugs</div>
+      <p class="text-xs" style="margin:6px 0 10px;color:var(--text-2)">Find molecules similar to the ligand loaded in the designer. This search uses ChEMBL only.</p>
+      <div class="flex gap-2 items-center" style="flex-wrap:wrap">
+        <label class="text-xs" style="display:flex;align-items:center;gap:8px">Minimum similarity <b id="chembl-ligand-th-value">70%</b>
+          <input id="chembl-ligand-th" type="range" min="40" max="95" step="5" value="70" oninput="updateChemblLigandThreshold()"></label>
+        <button class="btn btn-primary btn-sm" onclick="findSimilarDrugs()">Find similar drugs in ChEMBL</button>
+      </div>
+      <div id="chembl-ligand-status" class="text-xs" style="margin-top:8px;color:var(--text-2)">Load a ligand in the Dock tab, then search ChEMBL for similar compounds.</div>
+      <div id="chembl-ligand-results"></div>
+    </div>
+
+
+
+
+
+    
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+  <!-- TAB: LEADERBOARD                                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- RDKIT_FEATURES_PANEL_START -->
+<style id="rdkit-feature-style">
+  .rdk-local-nav { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+  .rdk-local-nav button.active { background:var(--accent); color:white; border-color:var(--accent); }
+  .rdk-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:10px; }
+  .rdk-metric { background:var(--bg-1); border:1px solid var(--border); border-radius:8px; padding:11px; }
+  .rdk-metric-label { color:var(--text-3); font-size:11px; min-height:28px; }
+  .rdk-metric-value { color:var(--text-1); font-size:18px; font-weight:700; margin-top:5px; word-break:break-word; }
+  .rdk-table-wrap { overflow:auto; max-height:540px; border:1px solid var(--border); border-radius:8px; }
+  .rdk-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .rdk-table th { position:sticky; top:0; background:var(--surface-2); color:var(--text-2); text-align:left; padding:10px; z-index:1; }
+  .rdk-table td { padding:9px 10px; border-top:1px solid var(--border); color:var(--text-2); }
+  .rdk-table td:last-child, .rdk-table th:last-child { text-align:right; }
+  .rdk-muted { color:var(--text-3); font-size:12px; }
+  .rdk-current { margin:12px 0; padding:10px; background:var(--bg-1); border-left:3px solid var(--accent-2); border-radius:5px; word-break:break-word; }
+</style>
+
+<div class="tab-panel" id="panel-ligand-features">
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:#4cc9f0"></span>RDKit Ligand Feature Explorer</div>
+    <p class="text-xs" style="color:var(--text-2);margin-top:8px">
+      Automatically calculates the loaded ligand’s RDKit properties, all available 2D scalar descriptors, feature search, and ligand-to-ligand comparison.
+    </p>
+
+    <div id="rdk-current" class="rdk-current rdk-muted">Load, draw, paste, or select a ligand to calculate its features.</div>
+
+    <div class="rdk-local-nav">
+      <button class="btn btn-sm active" type="button" data-rdk-view="overview">📊 Overview + all descriptors</button>
+      <button class="btn btn-sm" type="button" data-rdk-view="search">🔍 Search a feature</button>
+      <button class="btn btn-sm" type="button" data-rdk-view="compare">⚖️ Compare ligands</button>
+    </div>
+
+    <div class="rdk-view" id="rdk-view-overview">
+      <div id="rdk-summary" class="rdk-grid"></div>
+      <div class="card-title" style="margin-top:22px"><span class="dot" style="background:var(--accent-4)"></span>All calculated RDKit descriptors</div>
+      <div id="rdk-descriptor-note" class="rdk-muted" style="margin:8px 0"></div>
+      <div class="rdk-table-wrap">
+        <table class="rdk-table">
+          <thead><tr><th>Feature</th><th>Group</th><th>RDKit key</th><th>Value</th></tr></thead>
+          <tbody id="rdk-all-body"><tr><td colspan="4" class="rdk-muted">No ligand loaded.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rdk-view" id="rdk-view-search" style="display:none">
+      <label class="text-xs" for="rdk-search-input">Search by descriptor name, RDKit key, or category</label>
+      <input id="rdk-search-input" class="smiles-input" style="width:100%;margin:8px 0 12px" placeholder="e.g. LogP, TPSA, ring, BCUT, donor…">
+      <div class="rdk-table-wrap">
+        <table class="rdk-table">
+          <thead><tr><th>Feature</th><th>Group</th><th>RDKit key</th><th>Value</th></tr></thead>
+          <tbody id="rdk-search-body"><tr><td colspan="4" class="rdk-muted">Load a ligand first.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rdk-view" id="rdk-view-compare" style="display:none">
+      <p class="text-xs" style="color:var(--text-2);margin-bottom:10px">
+        The loaded ligand is molecule A. Paste a second SMILES as molecule B.
+      </p>
+      <label class="text-xs" for="rdk-compare-input">Molecule B SMILES</label>
+      <div class="flex gap-2" style="margin:7px 0 14px;flex-wrap:wrap">
+        <input id="rdk-compare-input" class="smiles-input" style="flex:1;min-width:240px" placeholder="Paste the comparison SMILES…">
+        <button id="rdk-compare-btn" class="btn btn-primary" type="button">⚖️ Compare</button>
+      </div>
+      <input id="rdk-compare-filter" class="smiles-input" style="width:100%;margin-bottom:12px;display:none" placeholder="Filter compared descriptors…">
+      <div id="rdk-compare-heading" class="rdk-muted"></div>
+      <div class="rdk-table-wrap" style="margin-top:10px">
+        <table class="rdk-table">
+          <thead><tr><th>Feature</th><th>A: loaded ligand</th><th>B: comparison ligand</th><th>B − A</th></tr></thead>
+          <tbody id="rdk-compare-body"><tr><td colspan="4" class="rdk-muted">Enter a second SMILES to compare.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- RDKIT_FEATURES_PANEL_END -->
+
+  <div class="tab-panel" id="panel-leaderboard">
+    <div class="card">
+      <div class="flex items-center justify-between" style="margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0">
+          <span class="dot" style="background:var(--accent-3)"></span>Global Leaderboard
+        </div>
+        <button class="btn btn-sm" onclick="refreshLeaderboard()" aria-label="Refresh leaderboard">⟳ Refresh</button>
+      </div>
+
+      <div id="lb-tabs" class="lb-tabs"></div>
+
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Player</th>
+            <th>Energy</th>
+            <th>QED</th>
+            <th title="SA score: 1 = easy to make, 10 = very hard">Synth (SA)</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="lb-body">
+          <!-- populated via JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+  <footer style="margin-top:40px;text-align:center;font-size:11px;color:var(--text-3);border-top:1px solid var(--border);padding-top:20px">
+    <div style="margin-bottom:6px">
+      ⚗️ <strong style="color:var(--text-2)">MOBIDock</strong> — Powered by
+      <span style="color:var(--accent)">RDKit</span> ·
+      <span style="color:var(--accent-2)">AutoDock Vina</span> ·
+      <span style="color:#76b900">DiffDock-L</span> ·
+      <span style="color:#e74c3c">Gnina</span> ·
+      <span style="color:var(--accent-4)">KarmaDock</span> ·
+      <span style="color:var(--green)">Meeko</span> ·
+      <span style="color:var(--accent-4)">FastAPI</span>
+    </div>
+    <div>Multi-engine molecular docking · RDKit property warnings · synthesizability analysis</div>
+  </footer>
+
+</div><!-- /app-root -->
+
+<!-- App scripts — order matters (main.js must be last) -->
+<script src="/static/js/core.js?v=pose-interactions-20261109"></script>
+<script src="/static/js/targets.js?v=multi-native-sites-20261110"></script>
+<script src="/static/js/engines.js"></script>
+<script src="/static/js/gridbox.js"></script>
+<script src="/static/js/uploads.js"></script>
+<script src="/static/js/viewer.js?v=pose-interactions-20261109"></script>
+<script src="/static/js/browsers.js"></script>
+<script src="/static/js/docking.js"></script>
+<script src="/static/js/leaderboard.js"></script>
+<script src="/static/js/literature.js"></script>
+<script src="/static/js/background.js"></script>
+<script src="/static/js/system.js"></script>
+<script src="/static/js/similarity.js?v=precise-tanimoto-20261110"></script>
+<script src="/static/js/similarity_interactions.js?v=precise-tanimoto-20261110"></script>
+<script src="/static/js/display.js?v=pose-interactions-20261109"></script>
+<script src="/static/js/synth.js?v=20261107-1"></script>
+<script src="/static/js/drug_warnings.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/static/js/main.js"></script>
+
+
+
+<script src="/static/js/mol_manager.js"></script>
+
+<!-- RDKIT_FEATURES_SCRIPT_START -->
+<script id="rdkit-feature-script">
+(() => {
+  "use strict";
+  if (window.__rdkitFeatureExplorer) return;
+  window.__rdkitFeatureExplorer = true;
+
+  const F = { smiles: "", name: "", data: null, compare: null, timer: null, request: 0, pendingName: "" };
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+
+  const valueText = value => {
+    if (value === null || value === undefined) return "—";
+    if (typeof value !== "number") return String(value);
+    const rounded = Math.round(value * 100000) / 100000;
+    return String(rounded);
+  };
+
+  async function requestJSON(path, options = {}) {
+    if (typeof window.apiFetch === "function") return window.apiFetch(path, options);
+    const response = await fetch(path, {
+      headers: { "Content-Type": "application/json" },
+      ...options
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || "Request failed");
+    return data;
+  }
+
+  function tableRows(rows) {
+    if (!rows.length) return '<tr><td colspan="4" class="rdk-muted">No matching descriptors.</td></tr>';
+    return rows.map(row => `
+      <tr>
+        <td>${esc(row.label)}</td>
+        <td>${esc(row.group)}</td>
+        <td><code>${esc(row.key)}</code></td>
+        <td>${esc(valueText(row.value))}</td>
+      </tr>
+    `).join("");
+  }
+
+  function renderOverview() {
+    const summary = $("rdk-summary");
+    const body = $("rdk-all-body");
+    const note = $("rdk-descriptor-note");
+    const current = $("rdk-current");
+
+    if (!F.data) {
+      summary.innerHTML = "";
+      body.innerHTML = '<tr><td colspan="4" class="rdk-muted">No ligand loaded.</td></tr>';
+      note.textContent = "";
+      current.textContent = "Load, draw, paste, or select a ligand to calculate its features.";
+      return;
+    }
+
+    const title = F.name || "Current ligand";
+    current.innerHTML = `<b>${esc(title)}</b><br><span class="rdk-muted">Formula: ${esc(F.data.formula)} · Canonical SMILES: <code>${esc(F.data.canonical_smiles)}</code></span>`;
+
+    summary.innerHTML = F.data.summary.map(row => `
+      <div class="rdk-metric">
+        <div class="rdk-metric-label">${esc(row.label)}</div>
+        <div class="rdk-metric-value">${esc(valueText(row.value))}${row.unit ? " " + esc(row.unit) : ""}</div>
+      </div>
+    `).join("");
+
+    note.textContent = `${F.data.descriptor_count} numerical RDKit descriptors were calculated. 3D shape descriptors are excluded because they require a specific conformer.`;
+    body.innerHTML = tableRows(F.data.descriptors);
+  }
+
+  function renderSearch() {
+    const body = $("rdk-search-body");
+    if (!F.data) {
+      body.innerHTML = '<tr><td colspan="4" class="rdk-muted">Load a ligand first.</td></tr>';
+      return;
+    }
+
+    const query = ($("rdk-search-input").value || "").trim().toLowerCase();
+    const rows = F.data.descriptors.filter(row =>
+      !query || [row.label, row.key, row.group].join(" ").toLowerCase().includes(query)
+    );
+    body.innerHTML = tableRows(rows);
+  }
+
+  function renderCompare() {
+    const heading = $("rdk-compare-heading");
+    const body = $("rdk-compare-body");
+    const filter = $("rdk-compare-filter");
+
+    if (!F.compare) {
+      heading.textContent = "";
+      filter.style.display = "none";
+      body.innerHTML = '<tr><td colspan="4" class="rdk-muted">Enter a second SMILES to compare.</td></tr>';
+      return;
+    }
+
+    filter.style.display = "block";
+    heading.innerHTML = `<b>Molecule A:</b> ${esc(F.compare.a.formula)} &nbsp; | &nbsp; <b>Molecule B:</b> ${esc(F.compare.b.formula)}`;
+
+    const query = (filter.value || "").trim().toLowerCase();
+    const rows = F.compare.rows.filter(row =>
+      !query || [row.label, row.key, row.group].join(" ").toLowerCase().includes(query)
+    );
+
+    body.innerHTML = rows.length ? rows.map(row => `
+      <tr>
+        <td title="${esc(row.key)}">${esc(row.label)}</td>
+        <td>${esc(valueText(row.a))}</td>
+        <td>${esc(valueText(row.b))}</td>
+        <td style="color:${row.delta > 0 ? 'var(--green)' : row.delta < 0 ? 'var(--red)' : 'var(--text-2)'}">${esc(valueText(row.delta))}</td>
+      </tr>
+    `).join("") : '<tr><td colspan="4" class="rdk-muted">No matching compared descriptors.</td></tr>';
+  }
+
+  function renderAll() {
+    renderOverview();
+    renderSearch();
+    renderCompare();
+  }
+
+  async function loadFeatures(smiles, name = "") {
+    smiles = (smiles || "").trim();
+    if (!smiles) {
+      F.data = null;
+      F.smiles = "";
+      renderAll();
+      return;
+    }
+
+    const requestId = ++F.request;
+    F.smiles = smiles;
+    if (name) F.name = name;
+
+    try {
+      const data = await requestJSON("/api/ligand/features?smiles=" + encodeURIComponent(smiles));
+      if (requestId !== F.request) return;
+      F.data = data;
+      F.compare = null;
+      renderAll();
+    } catch (error) {
+      if (requestId !== F.request) return;
+      F.data = null;
+      renderAll();
+      $("rdk-current").innerHTML = `<span style="color:var(--red)">Could not calculate RDKit features: ${esc(error.message)}</span>`;
+    }
+  }
+
+  function queueFeatures(smiles, name = "") {
+    clearTimeout(F.timer);
+    F.timer = setTimeout(() => loadFeatures(smiles, name), 180);
+  }
+
+  async function compareLigands() {
+    const smilesA = F.smiles || (($("smiles-input") || {}).value || "").trim();
+    const smilesB = ($("rdk-compare-input").value || "").trim();
+
+    if (!smilesA) {
+      showToast("Load a ligand before comparing.", "warning", "⚠️");
+      return;
+    }
+    if (!smilesB) {
+      showToast("Paste a second SMILES to compare.", "warning", "⚠️");
+      return;
+    }
+
+    const button = $("rdk-compare-btn");
+    const original = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = "⏳ Comparing…";
+
+    try {
+      F.compare = await requestJSON("/api/ligand/compare", {
+        method: "POST",
+        body: JSON.stringify({ smiles_a: smilesA, smiles_b: smilesB })
+      });
+      renderCompare();
+    } catch (error) {
+      showToast(error.message, "error", "❌");
+    } finally {
+      button.disabled = false;
+      button.innerHTML = original;
+    }
+  }
+
+  function showView(view) {
+    document.querySelectorAll("[data-rdk-view]").forEach(button => {
+      button.classList.toggle("active", button.dataset.rdkView === view);
+    });
+    document.querySelectorAll(".rdk-view").forEach(panel => {
+      panel.style.display = panel.id === "rdk-view-" + view ? "" : "none";
+    });
+  }
+
+  function hookLigandLoaders() {
+    const originalSetSMILES = window.setSMILES;
+    if (typeof originalSetSMILES === "function" && !originalSetSMILES.__rdkitFeatureWrapped) {
+      const wrapped = function(smiles) {
+        const result = originalSetSMILES.apply(this, arguments);
+        const name = F.pendingName || "";
+        F.pendingName = "";
+        queueFeatures(smiles, name);
+        return result;
+      };
+      wrapped.__rdkitFeatureWrapped = true;
+      window.setSMILES = wrapped;
+    }
+
+    const originalLoadLigand = window.loadLigand;
+    if (typeof originalLoadLigand === "function" && !originalLoadLigand.__rdkitFeatureWrapped) {
+      const wrapped = function(smiles, name) {
+        F.pendingName = name || "Loaded ligand";
+        return originalLoadLigand.apply(this, arguments);
+      };
+      wrapped.__rdkitFeatureWrapped = true;
+      window.loadLigand = wrapped;
+    }
+
+    const originalUpload = window.handleLigandUpload;
+    if (typeof originalUpload === "function" && !originalUpload.__rdkitFeatureWrapped) {
+      const wrapped = function(event) {
+        const file = event && event.target && event.target.files && event.target.files[0];
+        const name = file ? file.name.replace(/\.[^/.]+$/, "") : "Uploaded ligand";
+        const result = originalUpload.apply(this, arguments);
+        setTimeout(() => {
+          const input = $("smiles-input");
+          if (input && input.value.trim()) queueFeatures(input.value, name);
+        }, 1200);
+        return result;
+      };
+      wrapped.__rdkitFeatureWrapped = true;
+      window.handleLigandUpload = wrapped;
+    }
+  }
+
+  function initFeatureExplorer() {
+    hookLigandLoaders();
+
+    document.querySelectorAll("[data-rdk-view]").forEach(button => {
+      button.addEventListener("click", () => showView(button.dataset.rdkView));
+    });
+
+    $("rdk-search-input").addEventListener("input", renderSearch);
+    $("rdk-compare-filter").addEventListener("input", renderCompare);
+    $("rdk-compare-btn").addEventListener("click", compareLigands);
+    $("rdk-compare-input").addEventListener("keydown", event => {
+      if (event.key === "Enter") compareLigands();
+    });
+
+    const smilesInput = $("smiles-input");
+    if (smilesInput) {
+      smilesInput.addEventListener("input", () => {
+        F.name = "Edited ligand";
+        clearTimeout(F.timer);
+        F.timer = setTimeout(() => loadFeatures(smilesInput.value, F.name), 650);
+      });
+      if (smilesInput.value.trim()) queueFeatures(smilesInput.value, "Current ligand");
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initFeatureExplorer);
+  } else {
+    initFeatureExplorer();
+  }
+})();
+</script>
+<!-- RDKIT_FEATURES_SCRIPT_END -->
+<script src="/static/js/sa_explain3d.js?v=sa3d-1"></script>
+</body>
+</html>
